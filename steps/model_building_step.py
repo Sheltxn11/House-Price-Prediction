@@ -6,9 +6,9 @@ import pandas as pd
 from sklearn.base import RegressorMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
+from xgboost import XGBRegressor
 from zenml import ArtifactConfig, step
 from zenml.client import Client
 
@@ -19,13 +19,14 @@ model = Model(
     name="prices_predictor",
     version=None,
     license="Apache 2.0",
-    description="Price prediction model for houses.",
+    description="Price prediction model for houses using XGBoost.",
 )
 
 
 @step(enable_cache=False, experiment_tracker=experiment_tracker.name, model=model)
 def model_building_step(
-    X_train: pd.DataFrame, y_train: pd.Series) -> Annotated[Pipeline, ArtifactConfig(name="sklearn_pipeline", is_model_artifact=True)]:
+    X_train: pd.DataFrame, y_train: pd.Series
+) -> Annotated[Pipeline, ArtifactConfig(name="xgboost_pipeline", is_model_artifact=True)]:
 
     if not isinstance(X_train, pd.DataFrame):
         raise TypeError("X_train must be a pandas DataFrame.")
@@ -53,15 +54,16 @@ def model_building_step(
         ]
     )
 
-    pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", LinearRegression())])
+    pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("model", XGBRegressor())])
 
     if not mlflow.active_run():
-        mlflow.start_run() 
+        mlflow.start_run()
 
     try:
-        mlflow.sklearn.autolog()
 
-        logging.info("Building and training the Linear Regression model.")
+        mlflow.xgboost.autolog()
+
+        logging.info("Building and training the XGBoost model.")
         pipeline.fit(X_train, y_train)
         logging.info("Model training completed.")
 
